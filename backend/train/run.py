@@ -69,7 +69,7 @@ def fit_config(_: int):
     """
     config: dict[str, Scalar] = {
         "batch_size": 32,
-        "local_epochs": 2,
+        "local_epochs": 1,
     }
     return config
 
@@ -87,7 +87,8 @@ def flwr_server(initial_parameters: Parameters | None, port: int, coreml=False):
         initial_parameters=initial_parameters,
     )
     strategy.coreml = coreml
-
+    # logger.log(level=0,msg="ALEX flower server starting ...")
+    # print("ALEX flower server starting ...")
     logger.warning(f"Starting Flower server with coreml {coreml}.")
     try:
         # Start Flower server for 3 rounds of federated learning

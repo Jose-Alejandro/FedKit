@@ -20,6 +20,8 @@ import kotlinx.coroutines.withContext
 import org.eu.fedcampus.fed_kit_train.FlowerClient
 import org.eu.fedcampus.fed_kit_train.db.TFLiteModel
 import org.eu.fedcampus.fed_kit_train.helpers.assertIntsEqual
+import java.io.BufferedReader
+import java.io.InputStreamReader
 import java.nio.ByteBuffer
 import java.util.concurrent.CountDownLatch
 
@@ -66,7 +68,7 @@ class FlowerServiceRunnable<X : Any, Y : Any> @Throws constructor(
             handleFitIns(message)
         } else if (message.hasEvaluateIns()) {
             handleEvaluateIns(message)
-        } else if (message.hasReconnectIns()) {
+        }  else if (message.hasReconnectIns()) {
             return requestObserver.onCompleted()
         } else {
             throw Error("Unknown client message $message.")
@@ -84,6 +86,7 @@ class FlowerServiceRunnable<X : Any, Y : Any> @Throws constructor(
 
     @Throws
     fun handleFitIns(message: ServerMessage): ClientMessage {
+        val startT = System.currentTimeMillis()
         Log.d(TAG, "Handling FitIns")
         callback("Handling Fit request from the server.")
         val start = if (train.telemetry) System.currentTimeMillis() else null
@@ -94,35 +97,88 @@ class FlowerServiceRunnable<X : Any, Y : Any> @Throws constructor(
         )!!
         val epochs = epochConfig.sint64.toInt()
         val newWeights = weightsFromLayers(layers)
+
+//        Measure updateParameters Function
+//        val startUpdateParameters = System.currentTimeMillis()
         flowerClient.updateParameters(newWeights.toTypedArray())
-        flowerClient.fit(epochs, lossCallback = { callback("Average loss: ${it.average()}.") })
+//        val endUpdateParameters = System.currentTimeMillis()
+//        val upUpdateJob = launchJob {
+//            train.upTimesDataTelemetry("flowerClient.updateParameters",
+//                    endUpdateParameters - startUpdateParameters)
+//        }
+//        cleanUpJobs()
+//        jobs.add(upUpdateJob)
+
+//        Measure fit function (one epoch training time)
+        var i = System.currentTimeMillis()
+        flowerClient.fit(
+                epochs,
+                lossCallback = {
+                    callback("Average loss: ${it.average()}.")
+//                  callback("ALEX fits_in CPU Usage is ${getCpuProcessUsage()}")
+                }
+        )
+        var j = System.currentTimeMillis()
+
+        val upJob = launchJob {
+            train.upTimesDataTelemetry("flowerClient.fit", j -i)
+        }
+        cleanUpJobs()
+        jobs.add(upJob)
+        callback("ALEX flowerClient.fit fn took [ms] ${j-i}")
         if (start != null) {
             val end = System.currentTimeMillis()
             val job = launchJob { train.fitInsTelemetry(start, end) }
+
             cleanUpJobs()
             jobs.add(job)
         }
-        return fitResAsProto(weightsByteBuffers(), flowerClient.trainingSamples.size)
+        val endT = System.currentTimeMillis()
+        callback("ALEX fits_in took [ms] ${endT - startT}")
+        i = System.currentTimeMillis()
+        val response = fitResAsProto(weightsByteBuffers(), flowerClient.trainingSamples.size)
+        j = System.currentTimeMillis()
+        callback("ALEX fitResAsProto fn took [ms] ${j-i}")
+        return response
     }
 
     @Throws
     fun handleEvaluateIns(message: ServerMessage): ClientMessage {
+        val s = System.currentTimeMillis()
         Log.d(TAG, "Handling EvaluateIns")
         callback("Handling Evaluate request from the server")
+//        callback("ALEX CPU Usage is ${getCpuProcessUsage()}")
         val start = if (train.telemetry) System.currentTimeMillis() else null
         val layers = message.evaluateIns.parameters.tensorsList
         assertIntsEqual(layers.size, model.tflite_layers.size)
         val newWeights = weightsFromLayers(layers)
+
         flowerClient.updateParameters(newWeights.toTypedArray())
+
+//        evaluate timer
+        val startEvaluate = System.currentTimeMillis()
         val (loss, accuracy) = flowerClient.evaluate()
+        val endEvaluate = System.currentTimeMillis()
+        val jobEval = launchJob {
+            train.upTimesDataTelemetry("flowerClient.evaluate",
+                    endEvaluate - startEvaluate)
+        }
+        cleanUpJobs()
+        jobs.add(jobEval)
+
         callback("Test Accuracy after this round = $accuracy")
+
+
         val testSize = flowerClient.testSamples.size
+
         if (start != null) {
             val end = System.currentTimeMillis()
             val job = launchJob { train.evaluateInsTelemetry(start, end, loss, accuracy, testSize) }
             cleanUpJobs()
             jobs.add(job)
         }
+        val end= System.currentTimeMillis()
+        callback("ALEX evaluate_ins took [ms] ${end - s}")
         return evaluateResAsProto(loss, testSize)
     }
 
@@ -187,6 +243,13 @@ fun evaluateResAsProto(accuracy: Float, testing_size: Int): ClientMessage {
         .setNumExamples(testing_size.toLong()).build()
     return ClientMessage.newBuilder().setEvaluateRes(res).build()
 }
+
+fun getDataAsProto(total_time: Long/*, testing_size: Int*/): ClientMessage {
+    val res = ClientMessage.GetDataRes.newBuilder().setTotalTime(total_time)
+            //.setNumExamples(testing_size.toLong()).build()
+    return ClientMessage.newBuilder().setGetDataRes(res).build()
+}
+
 
 /**
  * @param address Address of the gRPC server, like "dns:///$host:$port".

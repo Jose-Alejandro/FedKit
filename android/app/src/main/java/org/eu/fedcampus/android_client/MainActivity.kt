@@ -43,6 +43,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun connect() {
+        val startTimerTask = System.currentTimeMillis()
         val clientPartitionIdText = binding.clientPartitionIdEditText.text.toString()
         val flServerIpText = binding.flServerIpEditText.text.toString()
         val flServerPortText = binding.flServerPortEditText.text.toString()
@@ -93,12 +94,19 @@ class MainActivity : AppCompatActivity() {
         }
         binding.connectButton.isEnabled = false
         appendLog("Creating channel object.")
+        val endTimerTask = System.currentTimeMillis()
+        val totalTime = endTimerTask - startTimerTask
+//        appendLog("ALEX Connect in time [ms] is: $totalTime" )
     }
 
     fun startTrain() {
         scope.launch {
             try {
+                val start = System.currentTimeMillis()
+
                 trainInBackground()
+                val end = System.currentTimeMillis()
+                train.upTimesDataTelemetry("trainInBackground", end - start)
             } catch (err: Throwable) {
                 appendLog("$err")
                 Log.e(TAG, err.stackTraceToString())
@@ -109,33 +117,66 @@ class MainActivity : AppCompatActivity() {
 
     @Throws
     suspend fun connectInBackground(participationId: Int, backendUrl: Uri, host: Uri) {
+        val startT = System.currentTimeMillis()
         Log.i(TAG, "Backend URL: $backendUrl")
         train = Train(this, backendUrl.toString(), sampleSpec())
-        train.enableTelemetry(deviceId(this))
-        val modelFile = train.prepareModel(DATA_TYPE)
-        val serverData = train.getServerInfo(binding.startFreshCheckBox.isChecked)
+        train.enableTelemetry(deviceId(this))  // Here we have device ID
+        appendLog("The device id is: ${deviceId(this)}")
+
+        val prepareModelStart = System.currentTimeMillis()
+          val modelFile = train.prepareModel(DATA_TYPE) // We need this to enable flower server
+        val prepareModelEnd = System.currentTimeMillis()
+
+        val getServerStart = System.currentTimeMillis()
+          val serverData = train.getServerInfo(binding.startFreshCheckBox.isChecked)
+//        After this function, we have sessionId
+        val getServerEnd = System.currentTimeMillis()
+
+//      Upload prepareModel Timer
+        train.upTimesDataTelemetry("prepareModel",prepareModelEnd - prepareModelStart)
+//      Upload getServer Timer
+        train.upTimesDataTelemetry("getServerInfo", getServerEnd - getServerStart)
+
         if (serverData.port == null) {
             throw Error("Flower server port not available, status ${serverData.status}")
         }
-        flowerClient = train.prepare(
+
+        val prepareStart = System.currentTimeMillis()
+          flowerClient = train.prepare(
             loadMappedFile(modelFile), "dns:///${host.host}:${serverData.port}", false
-        )
+          )
+        val prepareEnd = System.currentTimeMillis()
+        train.upTimesDataTelemetry("prepare",prepareEnd - prepareStart )
+
+
+        val loadDataStart = System.currentTimeMillis()
         loadData(this, flowerClient, participationId)
+        val loadDataEnd = System.currentTimeMillis()
+        train.upTimesDataTelemetry("loadData", loadDataEnd - loadDataStart)
 
         appendLog("Connected to Flower server on port ${serverData.port} and loaded data set.")
         runOnUiThread {
             binding.trainButton.isEnabled = true
         }
+        val endT = System.currentTimeMillis()
+        train.upTimesDataTelemetry("connectInBackground", endT - startT)
+        appendLog("ALEX Connect in background time is [ms]: ${endT - startT}")
     }
 
-    fun trainInBackground() {
+    suspend fun trainInBackground() {
+        val startT = System.currentTimeMillis()
         train.start {
             runOnUiThread { appendLog(it) }
         }
+        val endT1 = System.currentTimeMillis()
+
+        train.upTimesDataTelemetry("train.start", endT1 - startT)
         appendLog("Started training.")
         runOnUiThread {
             binding.trainButton.isEnabled = false
         }
+        val endT = System.currentTimeMillis()
+        appendLog("ALEX TrainInBackground time is [ms]: ${endT - startT}")
     }
 }
 

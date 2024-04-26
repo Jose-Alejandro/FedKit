@@ -13,6 +13,7 @@ import kotlin.concurrent.read
 import kotlin.concurrent.withLock
 import kotlin.concurrent.write
 
+
 /**
  * Flower client that handles TensorFlow Lite model [Interpreter] and sample data.
  * @param tfliteFileBuffer TensorFlow Lite model file.
@@ -22,7 +23,8 @@ class FlowerClient<X : Any, Y : Any>(
     tfliteFileBuffer: MappedByteBuffer,
     val layersSizes: IntArray,
     val spec: SampleSpec<X, Y>,
-) : AutoCloseable {
+) : AutoCloseable
+{
     val interpreter = Interpreter(tfliteFileBuffer)
     val interpreterLock = ReentrantLock()
     val trainingSamples = mutableListOf<Sample<X, Y>>()
@@ -123,17 +125,22 @@ class FlowerClient<X : Any, Y : Any>(
      * Not thread-safe.
      */
     private fun trainOneEpoch(batchSize: Int): List<Float> {
+        val startOneEpoch = System.currentTimeMillis()
         if (trainingSamples.isEmpty()) {
             Log.d(TAG, "No training samples available.")
             return listOf()
         }
 
         trainingSamples.shuffle()
-        return trainingBatches(min(batchSize, trainingSamples.size)).map {
+        val startT = System.currentTimeMillis()
+        val response = trainingBatches(min(batchSize, trainingSamples.size)).map {
             val bottlenecks = it.map { sample -> sample.bottleneck }
             val labels = it.map { sample -> sample.label }
             training(spec.convertX(bottlenecks), spec.convertY(labels))
         }.toList()
+        val endOneEpoch = System.currentTimeMillis()
+        Log.d(TAG, "ALEX one epoch training time is : ${endOneEpoch - startT}")
+        return response
     }
 
     /**
@@ -168,7 +175,8 @@ class FlowerClient<X : Any, Y : Any>(
 
                 val batch = if (nextIndex >= trainingSamples.size) {
                     trainingSamples.subList(
-                        trainingSamples.size - trainBatchSize, trainingSamples.size
+                        trainingSamples.size - trainBatchSize,
+                        trainingSamples.size
                     )
                 } else {
                     trainingSamples.subList(fromIndex, nextIndex)

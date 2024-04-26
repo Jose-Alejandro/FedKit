@@ -52,5 +52,22 @@ class EvaluateInsTelemetryData(models.Model):
     test_size = models.BigIntegerField(editable=False)
 
     def __str__(self) -> str:
-        return f"EvaluateIns {self.id} on {self.device_id} {self.start} - \
+        return f"EvaluateInsTelemetryData {self.id} on {self.device_id} {self.start} - \
 {self.end} loss: {self.loss} accuracy: {self.accuracy} test_size: {self.test_size}"
+
+# Always change together with Android `Train.UpTimesDataTelemetry`.
+class UpTimesData(models.Model):
+    id: int  # Help static analysis.
+    device_id = models.BigIntegerField(editable=False)
+    session_id = models.ForeignKey(
+        TrainingSession,
+        on_delete=models.CASCADE,
+        related_name="up_times",
+        editable=False,
+    )
+    function_name = models.CharField(max_length=256,editable=False)
+    elapsed_time = models.IntegerField(editable=False)
+
+    def __str__(self) -> str:
+        return f"UpTimesData {self.id} on device: {self.device_id} with session_id: {self.session_id.id}  \
+function_name: {self.function_name} total_time: {self.elapsed_time}"

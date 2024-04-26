@@ -16,7 +16,8 @@ class Train<X : Any, Y : Any> constructor(
     val context: Context,
     backendUrl: String,
     val sampleSpec: SampleSpec<X, Y>,
-) {
+)
+{
     var sessionId: Int? = null
     var telemetry = false
         private set
@@ -46,9 +47,11 @@ class Train<X : Any, Y : Any> constructor(
     }
 
     private suspend fun doAdvertisedModel(dataType: String): TFLiteModel {
+        val startT = System.currentTimeMillis()
         val model = client.advertisedModel(PostAdvertisedData(dataType))
         Log.d(TAG, "Model: $model")
         state = TrainState.WithModel(model)
+        val endT = System.currentTimeMillis()
         return model
     }
 
@@ -71,6 +74,7 @@ class Train<X : Any, Y : Any> constructor(
     }
 
     private suspend fun doDownloadModelFile(modelDir: File, model: TFLiteModel): File {
+//        val startT = System.currentTimeMillis()
         val fileUrl = model.tflite_path
         val fileName = fileUrl.split("/").last()
         if (modelDownloaded(model)) {
@@ -80,6 +84,8 @@ class Train<X : Any, Y : Any> constructor(
         }
         val fileDir = client.downloadFile(fileUrl, modelDir, fileName)
         Log.i(downloadModelFileTag, "$fileUrl -> ${fileDir.absolutePath}")
+//        val endT = System.currentTimeMillis()
+//        upTimesDataTelemetry("ALEX doDownloadModelFile", startT - endT)
         return fileDir
     }
 
@@ -132,11 +138,13 @@ class Train<X : Any, Y : Any> constructor(
         useTLS: Boolean,
         model: TFLiteModel
     ): FlowerClient<X, Y> {
+        val startT = System.currentTimeMillis()
         val flowerClient = FlowerClient(buffer, model.tflite_layers, sampleSpec)
         val channel = withContext(Dispatchers.IO) {
             createChannel(address, useTLS)
         }
         state = TrainState.Prepared(model, flowerClient, channel)
+        val endT = System.currentTimeMillis()
         return flowerClient
     }
 
@@ -204,6 +212,17 @@ class Train<X : Any, Y : Any> constructor(
         client.evaluateInsTelemetry(body)
         Log.i(TAG, "Telemetry: Sent evaluate instruction telemetry")
     }
+
+     @Throws
+     suspend fun upTimesDataTelemetry(
+         function_name: String,
+         elapsed_time: Long
+     ) {
+         checkTelemetryEnabled()
+         val body = UpTimesTelemetryData(deviceId, sessionId!!, function_name, elapsed_time)
+         client.upTimesDataTelemetry(body)
+         Log.i(TAG, "Telemetry: Elapsed time data sent to server")
+     }
 
     companion object {
         const val TAG = "Train"

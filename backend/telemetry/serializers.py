@@ -53,3 +53,23 @@ class EvaluateInsTelemetryDataSerializer(serializers.Serializer):
             "accuracy",
             "test_size",
         ]
+
+
+class UpTimesTelemetryDataSerializer(serializers.Serializer):
+    device_id = serializers.IntegerField()
+    session_id = serializers.IntegerField()
+    function_name = serializers.CharField(allow_null=True)
+    elapsed_time = serializers.IntegerField()
+    def create(self, validated_data):
+        session_id = validated_data["session_id"]
+        validated_data["session_id"] = TrainingSession.objects.get(id=session_id)
+        return UpTimesData.objects.create(**validated_data)
+
+    class Meta:
+        model = UpTimesData
+        fields = [
+            "device_id",
+            "session_id",
+            "function_name",
+            "elapsed_time",
+        ]

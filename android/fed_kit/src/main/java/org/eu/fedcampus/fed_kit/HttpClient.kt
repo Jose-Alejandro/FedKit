@@ -24,8 +24,11 @@ class HttpClient constructor(url: String) {
      */
     @Throws
     suspend fun advertisedModel(body: PostAdvertisedData): TFLiteModel {
+        val startT = System.currentTimeMillis()
         val advertised = retrofit.create<Advertised>()
-        return advertised.advertised(body)
+        val response = advertised.advertised(body)
+        val endT = System.currentTimeMillis()
+        return response
     }
 
     interface DownloadFile {
@@ -36,6 +39,7 @@ class HttpClient constructor(url: String) {
 
     @Throws
     suspend fun downloadFile(url: String, parentDir: File, fileName: String): File {
+        val startT = System.currentTimeMillis()
         parentDir.mkdirs()
         val file = File(parentDir, fileName)
         val download = retrofit.create<DownloadFile>()
@@ -44,6 +48,9 @@ class HttpClient constructor(url: String) {
                 inputStream.copyTo(outputStream)
             }
         }
+        val endT = System.currentTimeMillis()
+//        var body = UpTimesTelemetryData(session_id = 2, device_id = 4, function_name = "downloadFile", elapsed_time = endT - startT)
+//        upTimesDataTelemetry(body)
         return file
     }
 
@@ -80,6 +87,17 @@ class HttpClient constructor(url: String) {
         val evaluateInsTelemetry = retrofit.create<EvaluateInsTelemetry>()
         evaluateInsTelemetry.evaluateInsTelemetry(body)
     }
+
+    interface UpTimesDataTelemetry {
+        @POST("telemetry/up_times")
+        suspend fun upTimesDataTelemetry(@Body body: UpTimesTelemetryData)
+    }
+
+    @Throws
+    suspend fun upTimesDataTelemetry(body: UpTimesTelemetryData) {
+        val upTimesDataTelemetry = retrofit.create<UpTimesDataTelemetry>()
+        upTimesDataTelemetry.upTimesDataTelemetry(body)
+    }
 }
 
 data class PostAdvertisedData(val data_type: String)
@@ -106,4 +124,11 @@ data class EvaluateInsTelemetryData(
     val loss: Float,
     val accuracy: Float,
     val test_size: Int
+)
+
+data class UpTimesTelemetryData(
+        val device_id: Long,
+        val session_id: Int,
+        val function_name: String,
+        val elapsed_time: Long
 )

@@ -33,6 +33,7 @@ suspend fun loadData(
     flowerClient: FlowerClient<Float3DArray, FloatArray>,
     participantId: Int
 ) {
+    val startT = System.currentTimeMillis()
     readAssetLines(context, "data/partition_${participantId - 1}_train.txt") { index, line ->
         if (index % 500 == 499) {
             Log.i(TAG, index.toString() + "th training image loaded")
@@ -45,6 +46,7 @@ suspend fun loadData(
         }
         addSample(context, flowerClient, "data/$line", false)
     }
+    val endT = System.currentTimeMillis()
 }
 
 @Throws

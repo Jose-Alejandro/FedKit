@@ -4,8 +4,10 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.provider.Settings
 import android.util.Log
+import java.io.BufferedReader
 import java.io.File
 import java.io.IOException
+import java.io.InputStreamReader
 import java.io.RandomAccessFile
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
@@ -64,3 +66,48 @@ fun assertIntsEqual(expected: Int, actual: Int) {
         throw AssertionError("Test failed: expected `$expected`, got `$actual` instead.")
     }
 }
+
+fun getCpuProcessUsage(): Int {
+    try {
+        val pid = android.os.Process.myPid().toString()
+        val cores = Runtime.getRuntime().availableProcessors()
+        val process = Runtime.getRuntime().exec("top -n 1 -o PID,%CPU")
+        val bufferedReader = BufferedReader(InputStreamReader(process.inputStream))
+        var line = bufferedReader.readLine()
+        while (line != null) {
+            if (line.contains(pid)) {
+                val rawCpu = line.split(" ").last().toInt()
+                return rawCpu
+            }
+            line = bufferedReader.readLine()
+        }
+    } catch (e: Exception) {
+        return 0
+    }
+    return 0
+}
+
+
+//  Dummy function
+//@Throws
+//fun handleUpTimes(message: ServerMessage): ClientMessage {
+////        Log.d(TAG, "Handling UpTimes")
+////            callback("Handling Up telemetry data function")
+////        val start = if (train.telemetry) System.currentTimeMillis() else null
+////        val layers = message.evaluateIns.parameters.tensorsList
+////        assertIntsEqual(layers.size, model.tflite_layers.size)
+////        val newWeights = weightsFromLayers(layers)
+////        flowerClient.updateParameters(newWeights.toTypedArray())
+////        val (loss, accuracy) = flowerClient.evaluate()
+////        callback("Test Accuracy after this round = $accuracy")
+////        val testSize = flowerClient.testSamples.size
+////        val total_time:Long = 0
+////        if (start != null) {
+////            val end = System.currentTimeMillis()
+////            val total_time = end - start
+////            val job = launchJob { train.getTimeDataTelemetry(start, end, total_time) }
+////            cleanUpJobs()
+////            jobs.add(job)
+////        }
+//    return getDataAsProto(total_time)
+//}

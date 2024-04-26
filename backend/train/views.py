@@ -57,6 +57,8 @@ def ml_model_for_data_type(data: OrderedDict):
 @permission_classes((permissions.AllowAny,))
 def advertise_model(request: Request):
     (data, err) = deserialize(PostAdvertisedDataSerializer, request.data)
+    # print("ALEX advertise_model endpoint")
+    print("\nALEX /train/advertise_model  body in the request is: ", data)
     if err:
         return Response(err, HTTP_400_BAD_REQUEST)
     model = ml_model_for_data_type(data)
@@ -64,6 +66,8 @@ def advertise_model(request: Request):
         return Response("No model corresponding to data_type", HTTP_404_NOT_FOUND)
     cleanup_task()
     serializer = MLModelSerializer(model)
+    # print("ALEX response model is: \n", model)
+    print("ALEX /train/advertise_model response id is: \n", serializer.data)
     return Response(serializer.data)
 
 
@@ -71,6 +75,8 @@ def advertise_model(request: Request):
 @permission_classes((permissions.AllowAny,))
 def request_server(request: Request):
     (data, err) = deserialize(PostServerDataSerializer, request.data)
+    # print("ALEX request_server endpoint")
+    print("\nALEX /train/request_server request data: ", data)
     if err:
         return Response(err, HTTP_400_BAD_REQUEST)
     try:
@@ -79,10 +85,12 @@ def request_server(request: Request):
         logger.error(f"Model with id {data['id']} not found.")
         return Response("Model not found", HTTP_404_NOT_FOUND)
     response = server(model, data["start_fresh"])
+    print("ALEX /train/request_server response is", response)
     return Response(response.__dict__)
 
 
 def file_in_request(request: Request, name: str):
+    print("\t\tALEX file_in_request fn req ",request, "name:", name)
     files = request.FILES
     if isinstance(files, MultiValueDict):
         file = files.get(name)
@@ -120,6 +128,8 @@ def save_model_file(name: str, file_name: str, file: IO):
 @permission_classes((permissions.AllowAny,))
 def upload_model(request: Request):
     data = load(request.FILES.get("data"))
+    # print("ALEX upload_model endpoint")
+    print("\nALEX /train/upload_model request data: ", data)
     (data, err) = deserialize(UploadModelSerializer, data)
     if err:
         return Response(err, HTTP_400_BAD_REQUEST)
@@ -159,12 +169,16 @@ def upload_model(request: Request):
 @api_view(["POST"])
 @permission_classes((permissions.AllowAny,))
 def store_params(request: Request):
+    # print("ALEX store_params endpoint")
+    print("\nALEX /train/store_params endpoint request is: ", request.data)
     coreml = request.data.get("coreml", False)
+    print("\tALEX /train/store_params endpoint coreml is: ", coreml)
     server = scheduler.cm_server if coreml else scheduler.tf_server
     if server is None:
         logger.error("No server running but got params to store.")
         return Response("No server running.", HTTP_400_BAD_REQUEST)
     file = file_in_request(request, "file")
+    print("\tALEX /train/store_params endpoint file in request is: ", file)
     if file is None:
         return Response("No file in request.", HTTP_400_BAD_REQUEST)
     params = file[1].read()
