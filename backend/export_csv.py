@@ -5,7 +5,7 @@ import csv
 
 header = [
     "sesion_id", 
-    "ellapsed_time"
+    "elapsed_time"
 ]
 
 
@@ -32,7 +32,7 @@ header = [
     "id", 
     "device_id", 
     "session_id", 
-    "ellapsed_time"
+    "elapsed_time"
 ]
 csv_lines = [header]
 
@@ -61,7 +61,7 @@ header = [
     "device_id",
     "session_id", 
     "test_size" ,
-    "ellapsed_time"
+    "elapsed_time"
 ]
 
 csv_lines = [header]
@@ -71,7 +71,7 @@ for ev_in in evaluateInsTelemetryData:
     csv_lines.append(
         [
             ev_in.id, 
-            ev_in.device_id + (1<<64),
+            ev_in.device_id,
             ev_in.session_id.id,
             ev_in.test_size,
             ev_in.end - ev_in.start
@@ -79,6 +79,36 @@ for ev_in in evaluateInsTelemetryData:
     )
 
 with open('./ev_in_times.csv', 'w', newline='') as csv_file:
+    write = csv.writer(
+        csv_file, 
+        quoting=csv.QUOTE_ALL
+    )
+    write.writerows(csv_lines)
+
+header = [
+    "id",
+    "device_id",
+    "session_id", 
+    "function_name" ,
+    "elapsed_time"
+]
+
+csv_lines = [header]
+
+upTimesData = models.UpTimesData.objects.all()
+
+for up in upTimesData:
+    csv_lines.append(
+        [
+            up.id,
+            up.device_id,
+            up.session_id.id,
+            up.function_name,
+            up.elapsed_time
+        ]
+    )
+
+with open('./up_times.csv', 'w', newline='') as csv_file:
     write = csv.writer(
         csv_file, 
         quoting=csv.QUOTE_ALL

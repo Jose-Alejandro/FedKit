@@ -69,7 +69,7 @@ def fit_config(_: int):
     """
     config: dict[str, Scalar] = {
         "batch_size": 32,
-        "local_epochs": 1,
+        "local_epochs": 2,
     }
     return config
 
@@ -94,7 +94,7 @@ def flwr_server(initial_parameters: Parameters | None, port: int, coreml=False):
         # Start Flower server for 3 rounds of federated learning
         start_server(
             server_address=f"0.0.0.0:{port}",
-            config=ServerConfig(num_rounds=3),
+            config=ServerConfig(num_rounds=10),
             strategy=strategy,
         )
     except KeyboardInterrupt:
