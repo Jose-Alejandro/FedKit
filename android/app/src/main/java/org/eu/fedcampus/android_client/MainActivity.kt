@@ -165,6 +165,8 @@ class MainActivity : AppCompatActivity() {
 
     suspend fun trainInBackground() {
         val startT = System.currentTimeMillis()
+
+//        This effectively starts training in background (instantiating FlowerServiceRunnable)
         train.start {
             runOnUiThread { appendLog(it) }
         }

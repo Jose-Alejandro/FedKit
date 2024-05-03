@@ -26,6 +26,23 @@ class Train<X : Any, Y : Any> constructor(
     val client = HttpClient(backendUrl)
     var state: TrainState<X, Y> = TrainState.Initialized()
 
+    val jobs = mutableListOf<Job>()
+    private val scope = MainScope()
+    private fun cleanUpJobs() {
+        jobs.removeAll { it.isCompleted }
+    }
+    private fun launchJob(call: suspend () -> Unit) = scope.launch {
+        try {
+            call()
+        } catch (err: Throwable) {
+            logStacktrace(err)
+        }
+    }
+    val TAG = "Flower Train"
+    private fun logStacktrace(err: Throwable) {
+        Log.e(TAG, err.stackTraceToString())
+    }
+
     fun enableTelemetry(id: Long) {
         deviceId = id
         telemetry = true
@@ -169,6 +186,7 @@ class Train<X : Any, Y : Any> constructor(
         if (flowerClient.trainingSamples.isEmpty() || flowerClient.testSamples.isEmpty()) {
             throw Error("No data loaded for training")
         } else {
+//            val startFlowerService = System.currentTimeMillis()
             FlowerServiceRunnable(
                 channel,
                 this,
@@ -179,6 +197,14 @@ class Train<X : Any, Y : Any> constructor(
                 state = TrainState.Training(model, flowerClient, it)
                 it
             }
+//            val endFlowerService = System.currentTimeMillis()
+//            val upJob = launchJob {
+//                upTimesDataTelemetry(
+//                    "FlowerServiceRunnable",
+//                    endFlowerService - startFlowerService)
+//            }
+//            cleanUpJobs()
+//            jobs.add(upJob)
         }
 
     /**

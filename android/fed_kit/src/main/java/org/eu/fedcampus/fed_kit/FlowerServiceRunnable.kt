@@ -110,22 +110,17 @@ class FlowerServiceRunnable<X : Any, Y : Any> @Throws constructor(
 //        jobs.add(upUpdateJob)
 
 //        Measure fit function (one epoch training time)
-        var i = System.currentTimeMillis()
-        flowerClient.fit(
-                epochs,
-                lossCallback = {
-                    callback("Average loss: ${it.average()}.")
-//                  callback("ALEX fits_in CPU Usage is ${getCpuProcessUsage()}")
-                }
-        )
-        var j = System.currentTimeMillis()
+        val i = System.currentTimeMillis()
+        flowerClient.fit(epochs, lossCallback = {callback("Average loss: ${it.average()}.") } )
 
+        val j = System.currentTimeMillis()
+        Log.d(TAG, "ALEX handleFitIns j -i ${j -i}")
         val upJob = launchJob {
-            train.upTimesDataTelemetry("flowerClient.fit", j -i)
+            train.upTimesDataTelemetry("flowerClient.fit", j - i)
         }
         cleanUpJobs()
         jobs.add(upJob)
-        callback("ALEX flowerClient.fit fn took [ms] ${j-i}")
+        callback("ALEX flowerClient.fit fn took [ms] ${j-i}") //This is correct
         if (start != null) {
             val end = System.currentTimeMillis()
             val job = launchJob { train.fitInsTelemetry(start, end) }
@@ -135,10 +130,10 @@ class FlowerServiceRunnable<X : Any, Y : Any> @Throws constructor(
         }
         val endT = System.currentTimeMillis()
         callback("ALEX fits_in took [ms] ${endT - startT}")
-        i = System.currentTimeMillis()
+        val startFitAsProto = System.currentTimeMillis()
         val response = fitResAsProto(weightsByteBuffers(), flowerClient.trainingSamples.size)
-        j = System.currentTimeMillis()
-        callback("ALEX fitResAsProto fn took [ms] ${j-i}")
+        val endFitAsProto = System.currentTimeMillis()
+        callback("ALEX fitResAsProto fn took [ms] ${endFitAsProto - startFitAsProto}")
         return response
     }
 
@@ -244,11 +239,11 @@ fun evaluateResAsProto(accuracy: Float, testing_size: Int): ClientMessage {
     return ClientMessage.newBuilder().setEvaluateRes(res).build()
 }
 
-fun getDataAsProto(total_time: Long/*, testing_size: Int*/): ClientMessage {
-    val res = ClientMessage.GetDataRes.newBuilder().setTotalTime(total_time)
-            //.setNumExamples(testing_size.toLong()).build()
-    return ClientMessage.newBuilder().setGetDataRes(res).build()
-}
+//fun getDataAsProto(total_time: Long/*, testing_size: Int*/): ClientMessage {
+//    val res = ClientMessage.GetDataRes.newBuilder().setTotalTime(total_time)
+//            //.setNumExamples(testing_size.toLong()).build()
+//    return ClientMessage.newBuilder().setGetDataRes(res).build()
+//}
 
 
 /**

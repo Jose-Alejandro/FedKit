@@ -139,7 +139,7 @@ class FlowerClient<X : Any, Y : Any>(
             training(spec.convertX(bottlenecks), spec.convertY(labels))
         }.toList()
         val endOneEpoch = System.currentTimeMillis()
-        Log.d(TAG, "ALEX one epoch training time is : ${endOneEpoch - startT}")
+        Log.d(TAG, "ALEX trainOneEpoch time is : ${endOneEpoch - startT}")
         return response
     }
 
